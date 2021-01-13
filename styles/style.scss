@@ -1,0 +1,37 @@
+.datetime {
+  font-size: 16px;
+  display: flex;
+
+  border-color: rgb(195, 195, 195);
+  border-style: solid;
+  border-width: 1px;
+  height: 32px;
+
+  input {
+    border-style: none;
+    font-size: 14px;
+    border-width: 1px;
+    color: #363636;
+
+    &.date {
+      padding-left: 10px;
+      padding-right: 10px;
+      border-right-style: solid;
+      border-right-color: rgb(195, 195, 195);
+      width: 50%;
+    }
+
+    &.time {
+      padding-right: 10px;
+      padding-left: 10px;
+      width: 50%;
+    }
+  }
+
+  .is-disabled {
+    pointer-events: none;
+    cursor: default;
+    text-decoration: none;
+    color: lightgray;
+  }
+}
