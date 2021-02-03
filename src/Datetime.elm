@@ -97,7 +97,7 @@ fromString val =
 
 toString : ( String, String ) -> String
 toString ( h, t ) =
-    h ++ "T" ++ t ++ ".00"
+    h ++ "T" ++ t ++ ":00"
 
 
 resolve : Regex.Regex -> String -> String
