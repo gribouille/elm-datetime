@@ -5,39 +5,46 @@ import Browser
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Datetime
+import Time
+import Task
 
 
 type alias Model =
-  { model : Datetime.Model
+  { model : Maybe Datetime.Model
   }
 
 type Msg
   = OnMsg Datetime.Model
+  | OnNow ( Time.Zone, Time.Posix )
 
 
 main : Program () Model Msg
 main =
-  Browser.sandbox
-    { init = init
+  Browser.element
+    { init = \_ -> init
     , view = view
     , update = update
+    , subscriptions = \_ -> Sub.none
     }
 
 
-init : Model
+init : (Model, Cmd Msg)
 init =
-  { model = Datetime.init "2006-01-02T15:04:05.999999999Z07:00"
-  }
+  ({ model = Nothing }
+  , Task.perform OnNow (Task.map2 Tuple.pair Time.here Time.now)
+  )
 
 
 view : Model -> Html Msg
 view model =
   div [ class "ex-datetime" ]
-  [ Datetime.view OnMsg model.model ]
+  [ Maybe.withDefault (text "") (model.model |> Maybe.map (Datetime.view OnMsg)) ]
 
 
-update : Msg -> Model -> Model
+update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   case msg of
     OnMsg s ->
-      {model | model = s }
+      ( {model | model = Just s}, Cmd.none )
+    OnNow ( z, t ) ->
+      ( { model | model = Just <| Datetime.init z t }, Cmd.none )

@@ -1,5 +1,5 @@
 module Datetime exposing
-    ( Model, getValue, init
+    ( Model, get, init
     , phantom, view
     )
 
@@ -8,7 +8,7 @@ module Datetime exposing
 
 # Data
 
-@docs Model, getValue, init
+@docs Model, get, init
 
 
 # View
@@ -20,7 +20,9 @@ module Datetime exposing
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
-import Regex
+import Parser exposing ((|.), (|=), Parser)
+import Time exposing (Month(..), Posix, Zone)
+import TimeExtra
 
 
 {-| Opaque type for model
@@ -29,25 +31,40 @@ type Model
     = Model
         { date : String
         , time : String
+        , zone : Zone
         }
 
 
-{-| Get the selected value (TODO: rename to `value`).
+{-| Get the selected value.
 -}
-getValue : Model -> String
-getValue (Model m) =
-    toString ( m.date, m.time )
+get : Model -> ( Zone, Posix )
+get (Model m) =
+    ( m.zone
+    , Result.withDefault (Time.millisToPosix 0) <|
+        Result.map2 (\( y, mo, d ) ( h, mi ) -> TimeExtra.fromYMDHM y mo d h mi)
+            (Parser.run dateParser m.date)
+            (Parser.run timeParser m.time)
+    )
 
 
 {-| Initialize the component model.
 -}
-init : String -> Model
-init date =
+init : Zone -> Posix -> Model
+init z t =
     let
-        ( d, t ) =
-            fromString date
+        date =
+            String.fromInt (Time.toYear z t)
+                ++ "-"
+                ++ fmtMonth (Time.toMonth z t)
+                ++ "-"
+                ++ fmtString (Time.toDay z t)
+
+        time =
+            fmtString (Time.toHour z t)
+                ++ ":"
+                ++ fmtString (Time.toMinute z t)
     in
-    Model { date = d, time = t }
+    Model { date = date, time = time, zone = z }
 
 
 {-| Component view.
@@ -90,26 +107,82 @@ phantom =
         ]
 
 
-fromString : String -> ( String, String )
-fromString val =
-    ( resolve regDate val, resolve regTime val )
+fmtString : Int -> String
+fmtString i =
+    let
+        s =
+            String.fromInt i
+    in
+    if String.length s == 1 then
+        "0" ++ s
+
+    else
+        s
 
 
-toString : ( String, String ) -> String
-toString ( h, t ) =
-    h ++ "T" ++ t ++ ":00"
+fmtMonth : Month -> String
+fmtMonth month =
+    case month of
+        Jan ->
+            "01"
+
+        Feb ->
+            "02"
+
+        Mar ->
+            "03"
+
+        Apr ->
+            "04"
+
+        May ->
+            "05"
+
+        Jun ->
+            "06"
+
+        Jul ->
+            "07"
+
+        Aug ->
+            "08"
+
+        Sep ->
+            "09"
+
+        Oct ->
+            "10"
+
+        Nov ->
+            "11"
+
+        Dec ->
+            "12"
 
 
-resolve : Regex.Regex -> String -> String
-resolve r v =
-    Maybe.withDefault "" <| Maybe.map .match <| List.head <| Regex.find r v
+listMonths : List Month
+listMonths =
+    [ Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec ]
 
 
-regTime : Regex.Regex
-regTime =
-    Maybe.withDefault Regex.never <| Regex.fromString "(\\d\\d:\\d\\d)"
+intToMonth : Int -> Month
+intToMonth month =
+    Maybe.withDefault Jan <| List.head <| List.drop month listMonths
 
 
-regDate : Regex.Regex
-regDate =
-    Maybe.withDefault Regex.never <| Regex.fromString "^(\\d\\d\\d\\d-\\d\\d-\\d\\d)"
+dateParser : Parser ( Int, Month, Int )
+dateParser =
+    Parser.succeed (\a b c -> ( a, intToMonth b, c ))
+        |= Parser.int
+        |. Parser.oneOf [ Parser.symbol "-0", Parser.symbol "-" ]
+        |= Parser.int
+        |. Parser.oneOf [ Parser.symbol "-0", Parser.symbol "-" ]
+        |= Parser.int
+
+
+timeParser : Parser ( Int, Int )
+timeParser =
+    Parser.succeed Tuple.pair
+        |= Parser.int
+        |. Parser.oneOf [ Parser.symbol ":0", Parser.symbol ":" ]
+        |= Parser.int
