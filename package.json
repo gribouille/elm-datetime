@@ -1,6 +1,6 @@
 {
   "name": "elm-datetime",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "ELM datetime component",
   "main": "index.js",
   "directories": {
